@@ -23,8 +23,9 @@ WEB_PATH="${OT_DIR#$DOC_ROOT}"
 [ -z "$WEB_PATH" ] && WEB_PATH="/"
 [[ "$WEB_PATH" != */ ]] && WEB_PATH="$WEB_PATH/"
 
-PUB_IP=$(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'N/A')
-INST_ID=$(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo 'N/A')
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" --max-time 3 2>/dev/null)
+PUB_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'N/A')
+INST_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" --max-time 3 http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || echo 'N/A')
 MAC=$(ip link show 2>/dev/null | grep ether | head -1 | awk '{print $2}')
 
 echo ""
