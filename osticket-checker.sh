@@ -16,8 +16,9 @@ else
     OT_DIR="/var/www/html"
 fi
 
-# Detect web URL path (e.g. /osticket or /)
-DOC_ROOT=$(apache2ctl -S 2>/dev/null | grep -i documentroot | head -1 | grep -oP '"\K[^"]+' || echo "/var/www/html")
+# Detect web URL path (e.g. /osticket/ or /)
+DOC_ROOT=$(apache2ctl -S 2>/dev/null | grep -i documentroot | head -1 | sed 's/.*"\(.*\)".*/\1/' )
+DOC_ROOT="${DOC_ROOT:-/var/www/html}"
 WEB_PATH="${OT_DIR#$DOC_ROOT}"
 [ -z "$WEB_PATH" ] && WEB_PATH="/"
 [[ "$WEB_PATH" != */ ]] && WEB_PATH="$WEB_PATH/"
@@ -27,6 +28,8 @@ echo "════════════════════════�
 echo "  osTicket Installation Checker"
 echo "  Host: $(hostname)"
 echo "  IP: $(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'N/A')"
+echo "  Path: $OT_DIR"
+echo "  URL: http://localhost${WEB_PATH}"
 echo "  Date: $(date)"
 echo "══════════════════════════════════════════════════════════"
 
