@@ -8,6 +8,20 @@
 SCORE=0
 MAX=100
 
+# Auto-detect osTicket path
+OT_CONFIG=$(find /var/www -name "ost-config.php" 2>/dev/null | head -1)
+if [ -n "$OT_CONFIG" ]; then
+    OT_DIR=$(dirname "$(dirname "$OT_CONFIG")")
+else
+    OT_DIR="/var/www/html"
+fi
+
+# Detect web URL path (e.g. /osticket or /)
+DOC_ROOT=$(apache2ctl -S 2>/dev/null | grep -i documentroot | head -1 | grep -oP '"\K[^"]+' || echo "/var/www/html")
+WEB_PATH="${OT_DIR#$DOC_ROOT}"
+[ -z "$WEB_PATH" ] && WEB_PATH="/"
+[[ "$WEB_PATH" != */ ]] && WEB_PATH="$WEB_PATH/"
+
 echo ""
 echo "══════════════════════════════════════════════════════════"
 echo "  osTicket Installation Checker"
@@ -42,7 +56,7 @@ INST=$(curl -s --max-time 2 http://169.254.169.254/latest/meta-data/instance-typ
     && check "1.2" "Instance type: $INST" 3 "PASS" \
     || check "1.2" "Instance type: (metadata unavailable)" 3 "PASS"
 
-SG_80=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost/" 2>/dev/null)
+SG_80=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost${WEB_PATH}" 2>/dev/null)
 [ "$SG_80" != "000" ] \
     && check "1.3" "Port 80 responding — HTTP $SG_80" 4 "PASS" \
     || check "1.3" "Port 80 not responding" 4 "FAIL"
@@ -113,11 +127,11 @@ echo "┌───────────────────────�
 echo "│  SECTION 4: osTicket INSTALLATION (25 pts)             │"
 echo "└─────────────────────────────────────────────────────────┘"
 
-[ -f /var/www/html/include/ost-config.php ] \
+[ -f $OT_DIR/include/ost-config.php ] \
     && check "4.1" "osTicket files present" 5 "PASS" \
     || check "4.1" "osTicket files not found" 5 "FAIL"
 
-OWNER=$(stat -c '%U' /var/www/html/index.php 2>/dev/null)
+OWNER=$(stat -c '%U' $OT_DIR/index.php 2>/dev/null)
 [ "$OWNER" == "www-data" ] \
     && check "4.2" "File ownership = www-data" 5 "PASS" \
     || check "4.2" "Ownership = $OWNER (expected www-data)" 5 "FAIL"
@@ -131,12 +145,12 @@ apache2ctl -M 2>/dev/null | grep -q rewrite \
     && check "4.4" "mod_rewrite enabled" 3 "PASS" \
     || check "4.4" "mod_rewrite not enabled" 3 "FAIL"
 
-PAGE=$(curl -s --max-time 5 http://localhost/ 2>/dev/null)
+PAGE=$(curl -s --max-time 5 http://localhost${WEB_PATH} 2>/dev/null)
 echo "$PAGE" | grep -qi "osticket\|helpdesk\|support\|ticket" \
     && check "4.5" "osTicket installer completed (app loads)" 5 "PASS" \
     || check "4.5" "osTicket not loading" 5 "FAIL"
 
-CONF_PERM=$(stat -c '%a' /var/www/html/include/ost-config.php 2>/dev/null)
+CONF_PERM=$(stat -c '%a' $OT_DIR/include/ost-config.php 2>/dev/null)
 [ "$CONF_PERM" == "644" ] \
     && check "4.6" "ost-config.php permissions = 0644" 2 "PASS" \
     || check "4.6" "ost-config.php = $CONF_PERM (expected 644)" 2 "FAIL"
@@ -147,7 +161,7 @@ echo "┌───────────────────────�
 echo "│  SECTION 5: POST-INSTALL SECURITY (10 pts)             │"
 echo "└─────────────────────────────────────────────────────────┘"
 
-[ ! -d /var/www/html/setup ] \
+[ ! -d $OT_DIR/setup ] \
     && check "5.1" "/setup/ directory removed" 5 "PASS" \
     || check "5.1" "/setup/ directory still exists!" 5 "FAIL"
 
@@ -169,7 +183,7 @@ echo "$PAGE" | grep -qi "osticket\|helpdesk\|support\|ticket" \
     && check "6.1" "Client portal loads" 5 "PASS" \
     || check "6.1" "Client portal not loading" 5 "FAIL"
 
-ADMIN=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost/scp/ 2>/dev/null)
+ADMIN=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost${WEB_PATH}scp/ 2>/dev/null)
 [ "$ADMIN" -ge 200 ] && [ "$ADMIN" -lt 400 ] \
     && check "6.2" "Admin panel (/scp/) accessible — $ADMIN" 5 "PASS" \
     || check "6.2" "Admin panel (/scp/) — HTTP $ADMIN" 5 "FAIL"
