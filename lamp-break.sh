@@ -13,6 +13,12 @@ echo "  Breaking things in 3... 2... 1..."
 echo "══════════════════════════════════════════════════════════"
 echo ""
 
+# Create a PHP test page so students can see raw PHP when mod-php is missing
+echo '<?php echo "<h1>LAMP Stack is working!</h1>"; echo "<p>PHP Version: " . phpversion() . "</p>"; ?>' > /var/www/html/index.php
+
+# Remove default HTML page so Apache serves index.php instead
+rm -f /var/www/html/index.html
+
 systemctl stop apache2 2>/dev/null
 echo "  💥 Problem 1 introduced..."
 
