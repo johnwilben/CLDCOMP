@@ -10,24 +10,22 @@ if [ -z "$ID" ]; then
   exit 1
 fi
 
-INFO=$(aws ec2 describe-instances --instance-ids "$ID" \
-  --query "Reservations[].Instances[].[State.Name,PublicIpAddress,SecurityGroups[].GroupId]" \
-  --output json 2>&1)
+INFO=$(aws ec2 describe-instances --instance-ids "$ID" --output json 2>&1)
 
-if echo "$INFO" | grep -q "InvalidInstanceID"; then
+if echo "$INFO" | grep -q "InvalidInstanceID\|error"; then
   echo "❌ Instance ID not found: $ID"
   exit 1
 fi
 
-STATE=$(echo "$INFO" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0][0][0])" 2>/dev/null)
-IP=$(echo "$INFO" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0][0][1] or 'None')" 2>/dev/null)
-SG=$(echo "$INFO" | python3 -c "import sys,json;d=json.load(sys.stdin);print(' '.join(d[0][0][2]))" 2>/dev/null)
+STATE=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].State.Name')
+IP=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].PublicIpAddress // "None"')
+SGS=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].SecurityGroups[].GroupId')
 
 echo ""
 echo "Instance:  $ID"
 echo "State:     $STATE"
 echo "Public IP: $IP"
-echo "SG:        $SG"
+echo "SG:        $SGS"
 echo ""
 
 if [ "$STATE" = "running" ]; then
@@ -39,21 +37,17 @@ fi
 HAS_SSH=false
 HAS_HTTP=false
 
-for sg in $SG; do
-  RULES=$(aws ec2 describe-security-groups --group-ids "$sg" \
-    --query "SecurityGroups[].IpPermissions[].[IpProtocol,FromPort,ToPort,IpRanges[].CidrIp,Ipv6Ranges[].CidrIpv6]" \
-    --output json 2>/dev/null)
+for sg in $SGS; do
+  RULES=$(aws ec2 describe-security-groups --group-ids "$sg" --output json 2>/dev/null)
 
-  if echo "$RULES" | grep -q '"FromPort": 22\|"FromPort":22'; then
-    HAS_SSH=true
-  fi
-  if echo "$RULES" | grep -q '"FromPort": 80\|"FromPort":80'; then
-    HAS_HTTP=true
-  fi
-  if echo "$RULES" | grep -q '"IpProtocol": "-1"'; then
-    HAS_SSH=true
-    HAS_HTTP=true
-  fi
+  # Check each rule
+  PORTS=$(echo "$RULES" | jq -r '.SecurityGroups[].IpPermissions[] | "\(.IpProtocol) \(.FromPort)"')
+
+  while read -r proto port; do
+    [ "$proto" = "-1" ] && HAS_SSH=true && HAS_HTTP=true
+    [ "$port" = "22" ] && HAS_SSH=true
+    [ "$port" = "80" ] && HAS_HTTP=true
+  done <<< "$PORTS"
 done
 
 if $HAS_SSH; then
