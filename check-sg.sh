@@ -28,19 +28,23 @@ echo "Name:      $INAME"
 echo "State:     $STATE"
 echo "Public IP: $IP"
 echo "SG:        $SGS"
-echo ""
-
-if echo "$INAME" | grep -q "^CLDCOMP_interim_"; then
-  echo "✅ Instance name follows format: $INAME"
-else
-  echo "⚠️  Instance name should be CLDCOMP_interim_<YourName> (found: $INAME)"
-fi
 
 SCORE=0
 
+echo ""
+echo "── Instance Name — 4 pts ──"
+if echo "$INAME" | grep -q "^CLDCOMP_interim_"; then
+  echo "✅ Name follows format: $INAME — 4/4"
+  SCORE=$((SCORE + 4))
+else
+  echo "❌ Name should be CLDCOMP_interim_<YourName> (found: $INAME) — 0/4"
+fi
+
 if [ "$STATE" = "running" ]; then
+  echo ""
   echo "✅ Instance is running"
 else
+  echo ""
   echo "❌ Instance is NOT running ($STATE)"
 fi
 
@@ -86,27 +90,27 @@ for sg in $SGS; do
 done
 
 echo ""
-echo "── SSH (Port 22) — 10 pts ──"
+echo "── SSH (Port 22) — 8 pts ──"
 if $SSH_OPEN && $SSH_MYIP; then
-  echo "✅ Port 22 is open (My IP only) — 10/10"
-  SCORE=$((SCORE + 10))
+  echo "✅ Port 22 is open (My IP only) — 8/8"
+  SCORE=$((SCORE + 8))
 elif $SSH_OPEN && ! $SSH_MYIP; then
-  echo "⚠️  Port 22 is open but set to 0.0.0.0/0 — Should be My IP only! — 5/10"
-  SCORE=$((SCORE + 5))
+  echo "⚠️  Port 22 is open but set to 0.0.0.0/0 — Should be My IP only! — 4/8"
+  SCORE=$((SCORE + 4))
 else
-  echo "❌ Port 22 (SSH) is NOT open — 0/10"
+  echo "❌ Port 22 (SSH) is NOT open — 0/8"
 fi
 
 echo ""
-echo "── HTTP (Port 80) — 10 pts ──"
+echo "── HTTP (Port 80) — 8 pts ──"
 if $HTTP_OPEN && $HTTP_ANYWHERE; then
-  echo "✅ Port 80 is open (Anywhere 0.0.0.0/0) — 10/10"
-  SCORE=$((SCORE + 10))
+  echo "✅ Port 80 is open (Anywhere 0.0.0.0/0) — 8/8"
+  SCORE=$((SCORE + 8))
 elif $HTTP_OPEN && ! $HTTP_ANYWHERE; then
-  echo "⚠️  Port 80 is open but NOT set to Anywhere — Should be 0.0.0.0/0! — 5/10"
-  SCORE=$((SCORE + 5))
+  echo "⚠️  Port 80 is open but NOT set to Anywhere — Should be 0.0.0.0/0! — 4/8"
+  SCORE=$((SCORE + 4))
 else
-  echo "❌ Port 80 (HTTP) is NOT open — 0/10"
+  echo "❌ Port 80 (HTTP) is NOT open — 0/8"
 fi
 
 echo ""
