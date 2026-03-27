@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "══════════════════════════════════════"
-echo "  Security Group Checker"
+echo "  Security Group Checker (20 pts)"
 echo "══════════════════════════════════════"
 echo ""
 read -p "Enter your Instance ID: " ID
@@ -20,13 +20,23 @@ fi
 STATE=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].State.Name')
 IP=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].PublicIpAddress // "None"')
 SGS=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].SecurityGroups[].GroupId')
+INAME=$(echo "$INFO" | jq -r '.Reservations[0].Instances[0].Tags[]? | select(.Key=="Name") | .Value // "No Name"')
 
 echo ""
 echo "Instance:  $ID"
+echo "Name:      $INAME"
 echo "State:     $STATE"
 echo "Public IP: $IP"
 echo "SG:        $SGS"
 echo ""
+
+if echo "$INAME" | grep -q "^CLDCOMP_interim_"; then
+  echo "✅ Instance name follows format: $INAME"
+else
+  echo "⚠️  Instance name should be CLDCOMP_interim_<YourName> (found: $INAME)"
+fi
+
+SCORE=0
 
 if [ "$STATE" = "running" ]; then
   echo "✅ Instance is running"
@@ -34,33 +44,72 @@ else
   echo "❌ Instance is NOT running ($STATE)"
 fi
 
-HAS_SSH=false
-HAS_HTTP=false
+SSH_OPEN=false
+SSH_MYIP=true
+HTTP_OPEN=false
+HTTP_ANYWHERE=false
 
 for sg in $SGS; do
   RULES=$(aws ec2 describe-security-groups --group-ids "$sg" --output json 2>/dev/null)
 
-  # Check each rule
-  PORTS=$(echo "$RULES" | jq -r '.SecurityGroups[].IpPermissions[] | "\(.IpProtocol) \(.FromPort)"')
+  SSH_CIDRS=$(echo "$RULES" | jq -r '.SecurityGroups[].IpPermissions[] | select(.FromPort==22) | .IpRanges[].CidrIp')
+  if [ -n "$SSH_CIDRS" ]; then
+    SSH_OPEN=true
+    for cidr in $SSH_CIDRS; do
+      if [ "$cidr" = "0.0.0.0/0" ]; then
+        SSH_MYIP=false
+      fi
+    done
+  fi
 
-  while read -r proto port; do
-    [ "$proto" = "-1" ] && HAS_SSH=true && HAS_HTTP=true
-    [ "$port" = "22" ] && HAS_SSH=true
-    [ "$port" = "80" ] && HAS_HTTP=true
-  done <<< "$PORTS"
+  HTTP_CIDRS=$(echo "$RULES" | jq -r '.SecurityGroups[].IpPermissions[] | select(.FromPort==80) | .IpRanges[].CidrIp')
+  if [ -n "$HTTP_CIDRS" ]; then
+    HTTP_OPEN=true
+    for cidr in $HTTP_CIDRS; do
+      if [ "$cidr" = "0.0.0.0/0" ]; then
+        HTTP_ANYWHERE=true
+      fi
+    done
+  fi
+
+  ALL=$(echo "$RULES" | jq -r '.SecurityGroups[].IpPermissions[] | select(.IpProtocol=="-1") | .IpRanges[].CidrIp')
+  if [ -n "$ALL" ]; then
+    SSH_OPEN=true
+    HTTP_OPEN=true
+    SSH_MYIP=false
+    for cidr in $ALL; do
+      if [ "$cidr" = "0.0.0.0/0" ]; then
+        HTTP_ANYWHERE=true
+      fi
+    done
+  fi
 done
 
-if $HAS_SSH; then
-  echo "✅ Port 22 (SSH) is open"
+echo ""
+echo "── SSH (Port 22) — 10 pts ──"
+if $SSH_OPEN && $SSH_MYIP; then
+  echo "✅ Port 22 is open (My IP only) — 10/10"
+  SCORE=$((SCORE + 10))
+elif $SSH_OPEN && ! $SSH_MYIP; then
+  echo "⚠️  Port 22 is open but set to 0.0.0.0/0 — Should be My IP only! — 5/10"
+  SCORE=$((SCORE + 5))
 else
-  echo "❌ Port 22 (SSH) is NOT open"
-fi
-
-if $HAS_HTTP; then
-  echo "✅ Port 80 (HTTP) is open"
-else
-  echo "❌ Port 80 (HTTP) is NOT open"
+  echo "❌ Port 22 (SSH) is NOT open — 0/10"
 fi
 
 echo ""
+echo "── HTTP (Port 80) — 10 pts ──"
+if $HTTP_OPEN && $HTTP_ANYWHERE; then
+  echo "✅ Port 80 is open (Anywhere 0.0.0.0/0) — 10/10"
+  SCORE=$((SCORE + 10))
+elif $HTTP_OPEN && ! $HTTP_ANYWHERE; then
+  echo "⚠️  Port 80 is open but NOT set to Anywhere — Should be 0.0.0.0/0! — 5/10"
+  SCORE=$((SCORE + 5))
+else
+  echo "❌ Port 80 (HTTP) is NOT open — 0/10"
+fi
+
+echo ""
+echo "══════════════════════════════════════"
+echo "  SECURITY GROUP SCORE: $SCORE / 20"
 echo "══════════════════════════════════════"
