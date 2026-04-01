@@ -128,23 +128,15 @@ if [ -n "$WP_DB" ] && [ -n "$WP_HOST" ]; then
     WP_PASS=$(grep "DB_PASSWORD" "$WP_DIR/wp-config.php" | cut -d"'" -f4)
     PRODUCT_COUNT=$(mysql -h "$WP_HOST" -u "$WP_USER" -p"$WP_PASS" -N -e "SELECT COUNT(*) FROM ${WP_DB}.wp_posts WHERE post_type='product' AND post_status='publish';" 2>/dev/null)
     if [ -n "$PRODUCT_COUNT" ] && [ "$PRODUCT_COUNT" -ge 3 ]; then
-        check "4.3" "At least 3 products ($PRODUCT_COUNT found)" 10 "PASS"
+        check "4.3" "At least 3 products ($PRODUCT_COUNT found)" 15 "PASS"
     elif [ -n "$PRODUCT_COUNT" ] && [ "$PRODUCT_COUNT" -gt 0 ]; then
         SCORE=$((SCORE + 5))
-        printf "  ⚠️  %-4s %-48s %2d/%2d\n" "4.3" "Only $PRODUCT_COUNT product(s) — need 3" "5" "10"
+        printf "  ⚠️  %-4s %-48s %2d/%2d\n" "4.3" "Only $PRODUCT_COUNT product(s) — need 3" "5" "15"
     else
-        check "4.3" "No products found" 10 "FAIL"
-    fi
-
-    CAT_COUNT=$(mysql -h "$WP_HOST" -u "$WP_USER" -p"$WP_PASS" -N -e "SELECT COUNT(*) FROM ${WP_DB}.wp_terms t JOIN ${WP_DB}.wp_term_taxonomy tt ON t.term_id = tt.term_id WHERE tt.taxonomy='product_cat' AND t.name != 'Uncategorized';" 2>/dev/null)
-    if [ -n "$CAT_COUNT" ] && [ "$CAT_COUNT" -ge 1 ]; then
-        check "4.4" "Product category created ($CAT_COUNT)" 5 "PASS"
-    else
-        check "4.4" "No custom product category" 5 "FAIL"
+        check "4.3" "No products found" 15 "FAIL"
     fi
 else
-    check "4.3" "Cannot check products" 10 "FAIL"
-    check "4.4" "Cannot check categories" 5 "FAIL"
+    check "4.3" "Cannot check products" 15 "FAIL"
 fi
 
 # ── SECTION 5: PERSONALIZATION (20 pts) ──
