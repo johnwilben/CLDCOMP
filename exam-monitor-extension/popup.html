@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:320px;font-family:'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px}
+h2{font-size:1.1em;color:#fff;margin-bottom:12px;text-align:center}
+.status{text-align:center;padding:10px;border-radius:8px;margin-bottom:12px;font-weight:700;font-size:.9em}
+.active{background:#28a74530;color:#28a745;border:1px solid #28a745}
+.inactive{background:#dc354530;color:#dc3545;border:1px solid #dc3545}
+input{width:100%;padding:10px;border-radius:8px;border:1px solid #444;background:#2a2a3e;color:#fff;font-size:.9em;margin-bottom:10px}
+input:focus{outline:none;border-color:#4a90d9}
+.btn{width:100%;padding:10px;border-radius:8px;font-size:.9em;font-weight:700;border:none;cursor:pointer;margin-bottom:6px}
+.btn-start{background:#28a745;color:#fff}
+.btn-stop{background:#dc3545;color:#fff}
+.btn:hover{opacity:.9}
+.violations{background:#2a2a3e;border-radius:8px;padding:10px;margin-top:10px;font-size:.75em;max-height:150px;overflow-y:auto}
+.v-item{padding:4px 0;border-bottom:1px solid #333;color:#ff6b6b}
+.v-count{text-align:center;font-size:1.5em;font-weight:800;color:#ff6b6b;margin:8px 0}
+.info{font-size:.7em;color:#888;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<h2>🔒 CLDCOMP Exam Monitor</h2>
+<div id="status" class="status inactive">NOT ACTIVE</div>
+
+<div id="setup">
+  <input id="name" placeholder="Enter your full name..." />
+  <button class="btn btn-start" id="startBtn" onclick="startExam()">Start Monitoring</button>
+</div>
+
+<div id="running" style="display:none">
+  <div>Student: <strong id="sname"></strong></div>
+  <div class="v-count">🚨 <span id="vcount">0</span> violations</div>
+  <button class="btn btn-stop" onclick="stopExam()">Stop Monitoring</button>
+  <div class="violations" id="vlog"></div>
+</div>
+
+<div class="info">AI tools (ChatGPT, Claude, Gemini, etc.) are monitored.<br>Violations are logged automatically.</div>
+
+<script>
+function updateUI(){
+  chrome.runtime.sendMessage({action:"status"},r=>{
+    if(!r)return;
+    const status=document.getElementById("status");
+    const setup=document.getElementById("setup");
+    const running=document.getElementById("running");
+    
+    if(r.examActive){
+      status.textContent="🟢 MONITORING ACTIVE";
+      status.className="status active";
+      setup.style.display="none";
+      running.style.display="block";
+      document.getElementById("sname").textContent=r.studentName;
+      document.getElementById("vcount").textContent=r.violations;
+      
+      const vlog=document.getElementById("vlog");
+      vlog.innerHTML=r.log.map(v=>`<div class="v-item">${v.time} — ${v.type} — ${v.url}</div>`).reverse().join("");
+    }else{
+      status.textContent="NOT ACTIVE";
+      status.className="status inactive";
+      setup.style.display="block";
+      running.style.display="none";
+    }
+  });
+}
+
+function startExam(){
+  const name=document.getElementById("name").value.trim();
+  if(!name){alert("Enter your name!");return;}
+  chrome.runtime.sendMessage({action:"start",name:name},r=>{
+    if(r&&r.ok)updateUI();
+  });
+}
+
+function stopExam(){
+  if(!confirm("Stop monitoring? Make sure you've submitted your exam."))return;
+  chrome.runtime.sendMessage({action:"stop"},r=>{
+    updateUI();
+  });
+}
+
+updateUI();
+setInterval(updateUI,3000);
+</script>
+</body>
+</html>
