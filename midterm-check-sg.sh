@@ -1,14 +1,14 @@
 #!/bin/bash
 # Midterm SG Checker — Run from CloudShell
-GSHEET="https://script.google.com/macros/s/AKfycbxZk6OvY_lUv65F-yzqcST7Udp1uSpRPDmeGCn2fzjvtIsY3V-7z85ED0I4uC_Rp0UIqA/exec"
+GSHEET="https://script.google.com/macros/s/AKfycbzmaSHZe8VphMV_Ogri449fQcyEiPOxlwpu0jbMILzw8ucU6ORUQ_numN4Ya2QqyvPQ5A/exec"
 
 echo "============================================"
 echo "  🔒 MIDTERM SECURITY GROUP CHECKER"
 echo "============================================"
 echo ""
 
-read -p "Enter your EC2 Instance ID (e.g., i-0abc123): " EC2_ID
-read -p "Enter your RDS Instance Identifier (e.g., midterm-db-juan): " RDS_ID
+read -p "Enter your EC2 Instance ID (e.g., i-0abc123): " EC2_ID < /dev/tty
+read -p "Enter your RDS Instance Identifier (e.g., midterm-db-juan): " RDS_ID < /dev/tty
 
 echo ""
 echo "Checking..."
@@ -103,7 +103,7 @@ echo "============================================"
 echo ""
 
 # Update Google Sheet with SG results
-read -p "Type 'SUBMIT' to upload SG results: " CONFIRM
+read -p "Type SUBMIT to upload SG results: " CONFIRM < /dev/tty
 
 if [ "$CONFIRM" = "SUBMIT" ]; then
     PAYLOAD=$(cat <<EOF
