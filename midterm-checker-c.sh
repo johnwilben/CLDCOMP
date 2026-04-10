@@ -14,21 +14,15 @@ TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-m
 INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null)
 PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
 ACCOUNT_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/dynamic/instance-identity/document 2>/dev/null | grep -o '"accountId" : "[^"]*"' | cut -d'"' -f4)
-STUDENT_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/tags/instance/Name 2>/dev/null)
 
 # Clean up — if metadata returns HTML/XML, it failed
 if echo "$INSTANCE_ID" | grep -q "<?xml"; then INSTANCE_ID="unknown"; fi
-if echo "$STUDENT_NAME" | grep -q "<?xml\|404\|html"; then STUDENT_NAME="unknown"; fi
 if [ -z "$INSTANCE_ID" ]; then INSTANCE_ID="unknown"; fi
-if [ -z "$STUDENT_NAME" ]; then STUDENT_NAME="unknown"; fi
 if [ -z "$ACCOUNT_ID" ]; then ACCOUNT_ID="unknown"; fi
 if [ -z "$PRIVATE_IP" ]; then PRIVATE_IP="unknown"; fi
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-# If name unknown, ask
-if [ "$STUDENT_NAME" = "unknown" ]; then
-    read -p "Could not detect your Name tag. Enter your full name: " STUDENT_NAME
-fi
+read -p "Enter your full name: " STUDENT_NAME
 
 echo "Student: $STUDENT_NAME"
 echo "Instance: $INSTANCE_ID"
@@ -37,69 +31,61 @@ echo ""
 echo "--- Troubleshooting ---"
 echo -n "1. Apache running: "
 if systemctl is-active apache2 >/dev/null 2>&1; then
-    echo "PASS (+7)"; P1="PASS"; SCORE=$((SCORE+7))
+    echo "PASS (+10)"; P1="PASS"; SCORE=$((SCORE+10))
 else
     echo "FAIL"; P1="FAIL"
 fi
 echo -n "2. PHP-MySQL module: "
 if php -m 2>/dev/null | grep -qi mysqli; then
-    echo "PASS (+7)"; P2="PASS"; SCORE=$((SCORE+7))
+    echo "PASS (+10)"; P2="PASS"; SCORE=$((SCORE+10))
 else
     echo "FAIL"; P2="FAIL"
 fi
 echo -n "3. mod_rewrite enabled: "
 if apache2ctl -M 2>/dev/null | grep -q rewrite; then
-    echo "PASS (+7)"; P3="PASS"; SCORE=$((SCORE+7))
+    echo "PASS (+10)"; P3="PASS"; SCORE=$((SCORE+10))
 else
     echo "FAIL"; P3="FAIL"
 fi
 echo ""
 echo "--- EC2 + RDS ---"
 
-# EC2 naming
-echo -n "4. EC2 Name tag: "
-if echo "$STUDENT_NAME" | grep -qi "CLDCOMP_midterm"; then
-    echo "PASS — $STUDENT_NAME (+10)"; SCORE=$((SCORE+10))
-else
-    echo "WARNING — Name: $STUDENT_NAME (+5)"; SCORE=$((SCORE+5))
-fi
-
 # App + RDS
-echo -n "5. osTicket + RDS connection: "
+echo -n "4. osTicket + RDS connection: "
 RDS_ENDPOINT="none"
 APP_CHECK="FAIL"
 if [ -f /var/www/html/include/ost-config.php ]; then
     DBHOST=$(grep "DBHOST" /var/www/html/include/ost-config.php 2>/dev/null | grep -o "'[^']*'" | tail -1 | tr -d "'")
     RDS_ENDPOINT="$DBHOST"
     if echo "$DBHOST" | grep -q "rds.amazonaws.com"; then
-        echo "PASS — Connected to RDS (+16)"; SCORE=$((SCORE+16)); APP_CHECK="PASS"
+        echo "PASS — Connected to RDS (+20)"; SCORE=$((SCORE+20)); APP_CHECK="PASS"
     else
-        echo "PARTIAL — config exists but DBHOST is not RDS (+8)"; SCORE=$((SCORE+8)); APP_CHECK="PARTIAL"
+        echo "PARTIAL — config exists but DBHOST is not RDS (+10)"; SCORE=$((SCORE+10)); APP_CHECK="PARTIAL"
     fi
 else
     echo "FAIL — config file not found"
 fi
 
 # Site loads
-echo -n "6. Site loads: "
+echo -n "5. Site loads: "
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null)
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
-    echo "PASS (HTTP $HTTP_CODE) (+8)"; SCORE=$((SCORE+8))
+    echo "PASS (HTTP $HTTP_CODE) (+10)"; SCORE=$((SCORE+10))
 else
     echo "FAIL (HTTP $HTTP_CODE)"
 fi
 
 # Personalization
-echo -n "7. Site personalized: "
+echo -n "6. Site personalized: "
 SITE_TITLE=$(curl -s http://localhost/ 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
 if [ -n "$SITE_TITLE" ] && [ "$SITE_TITLE" != "<title></title>" ]; then
-    echo "PASS — $SITE_TITLE (+8)"; SCORE=$((SCORE+8))
+    echo "PASS — $SITE_TITLE (+5)"; SCORE=$((SCORE+5))
 else
     echo "FAIL"
 fi
 
 # File ownership
-echo -n "8. File ownership (www-data): "
+echo -n "7. File ownership (www-data): "
 OWNER=$(stat -c '%U' /var/www/html/index.php 2>/dev/null || echo "unknown")
 if [ "$OWNER" = "www-data" ]; then
     echo "PASS (+5)"; SCORE=$((SCORE+5))
@@ -109,7 +95,7 @@ fi
 
 echo ""
 echo "============================================"
-echo "  SCORE: $SCORE / 100"
+echo "  SCORE: $SCORE / 70"
 echo "============================================"
 if [ $SCORE -ge 90 ]; then GRADE="EXCELLENT"
 elif [ $SCORE -ge 80 ]; then GRADE="VERY GOOD"
@@ -121,7 +107,7 @@ echo "============================================"
 echo ""
 echo "Ready to submit your results?"
 echo "   Name: $STUDENT_NAME"
-echo "   Score: $SCORE/100"
+echo "   Score: $SCORE/70"
 echo "   Instance: $INSTANCE_ID"
 echo ""
 read -p "Type SUBMIT to upload your score: " CONFIRM
