@@ -22,7 +22,7 @@ if [ -z "$ACCOUNT_ID" ]; then ACCOUNT_ID="unknown"; fi
 if [ -z "$PRIVATE_IP" ]; then PRIVATE_IP="unknown"; fi
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-read -p "Enter your full name: " STUDENT_NAME
+read -p "Enter your full name: " STUDENT_NAME < /dev/tty
 
 echo "Student: $STUDENT_NAME"
 echo "Instance: $INSTANCE_ID"
@@ -110,7 +110,7 @@ echo "   Name: $STUDENT_NAME"
 echo "   Score: $SCORE/70"
 echo "   Instance: $INSTANCE_ID"
 echo ""
-read -p "Type SUBMIT to upload your score: " CONFIRM
+read -p "Type SUBMIT to upload your score: " CONFIRM < /dev/tty
 if [ "$CONFIRM" = "SUBMIT" ]; then
     PAYLOAD="{\"studentName\":\"$STUDENT_NAME\",\"instanceId\":\"$INSTANCE_ID\",\"rdsEndpoint\":\"$RDS_ENDPOINT\",\"set\":\"$SET\",\"score\":\"$SCORE\",\"p1\":\"$P1\",\"p2\":\"$P2\",\"p3\":\"$P3\",\"appInstalled\":\"$APP_CHECK\",\"sgCheck\":\"pending\",\"timestamp\":\"$TIMESTAMP\",\"privateIp\":\"$PRIVATE_IP\",\"accountId\":\"$ACCOUNT_ID\"}"
     curl -s -L -X POST "$GSHEET" -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null 2>&1
