@@ -41,8 +41,8 @@ if apache2ctl -M 2>/dev/null | grep -q php; then
 else
     echo "FAIL"; P2="FAIL"
 fi
-echo -n "3. mod_rewrite enabled: "
-if apache2ctl -M 2>/dev/null | grep -q rewrite; then
+echo -n "3. PHP-intl module: "
+if php -m 2>/dev/null | grep -qi intl; then
     echo "PASS (+10)"; P3="PASS"; SCORE=$((SCORE+10))
 else
     echo "FAIL"; P3="FAIL"
