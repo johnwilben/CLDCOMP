@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packet Journey</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1923;color:#e0e0e0;min-height:100vh}
+.app{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:24px;color:#fff;text-align:center;margin:12px 0 4px}
+.subtitle{color:#888;text-align:center;margin-bottom:16px;font-size:13px}
+
+/* Name screen */
+#name-screen{display:flex;justify-content:center;align-items:center;min-height:90vh}
+.name-box{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:40px;max-width:400px;width:90%;text-align:center}
+.name-box h1{font-size:28px;margin-bottom:8px}
+.name-box p{color:#888;margin-bottom:20px;font-size:14px}
+.name-box input{width:100%;padding:12px;border:1px solid #2a3a4a;border-radius:8px;background:#0f1923;color:#fff;font-size:16px;margin-bottom:12px;outline:none;text-align:center}
+.name-box input:focus{border-color:#ff9900}
+.name-box button{width:100%;padding:12px;border:none;border-radius:8px;background:#ff9900;color:#000;font-size:16px;font-weight:600;cursor:pointer}
+.name-box button:hover{background:#ffad33}
+
+/* Diagram */
+.diagram-area{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:20px;margin:12px 0;position:relative;height:180px;overflow:hidden}
+.node{position:absolute;text-align:center;transition:all 0.5s}
+.node .icon{width:64px;height:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin:0 auto 4px;border:2px solid transparent}
+.node .label{font-size:11px;color:#aaa;white-space:nowrap}
+.node.active .icon{border-color:#fff;box-shadow:0 0 12px rgba(255,255,255,0.3)}
+.node.done .icon{opacity:0.5}
+.node.locked .icon{opacity:0.25}
+
+/* Colors */
+.icon-orange{background:#ff9900;color:#000}
+.icon-red{background:#dd3522;color:#fff}
+.icon-blue{background:#3b48cc;color:#fff}
+.icon-green{background:#1b660f;color:#fff}
+.icon-purple{background:#8c4fff;color:#fff}
+.icon-gray{background:#555;color:#fff}
+
+/* Packet */
+.packet{position:absolute;width:20px;height:20px;background:#00ff88;border-radius:50%;box-shadow:0 0 12px #00ff88,0 0 24px #00ff88;transition:all 0.8s ease-in-out;z-index:10}
+.packet::after{content:'YOU';position:absolute;top:22px;left:50%;transform:translateX(-50%);font-size:9px;color:#00ff88;white-space:nowrap;font-weight:700}
+.packet.dropped{background:#ff4444;box-shadow:0 0 12px #ff4444,0 0 24px #ff4444;animation:drop 0.5s}
+.packet.dropped::after{color:#ff4444;content:'DROPPED'}
+@keyframes drop{0%{transform:scale(1)}50%{transform:scale(1.5)}100%{transform:scale(0)}}
+
+/* Arrow line */
+.arrow-line{position:absolute;height:2px;background:linear-gradient(90deg,#2a3a4a,#3a4a5a);top:47px;z-index:0}
+
+/* Question area */
+.question-area{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:24px;margin:12px 0}
+.step-label{font-size:12px;color:#ff9900;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.question-text{font-size:16px;color:#fff;line-height:1.6;margin-bottom:16px}
+.question-text code{background:#0f1923;border:1px solid #2a3a4a;border-radius:4px;padding:1px 6px;color:#ff9900;font-size:14px}
+.info-box{background:#0f1923;border:1px solid #2a3a4a;border-radius:8px;padding:12px;margin:8px 0 16px;font-family:'SF Mono',Consolas,monospace;font-size:12px;color:#4fc3f7;white-space:pre;overflow-x:auto;line-height:1.4}
+
+.choices{display:flex;flex-direction:column;gap:8px}
+.choice{background:#0f1923;border:1px solid #2a3a4a;border-radius:8px;padding:12px 16px;cursor:pointer;font-size:14px;color:#ccc;transition:all 0.2s}
+.choice:hover{border-color:#ff9900;color:#fff}
+.choice.correct{border-color:#00ff88;background:#0a2a1a;color:#00ff88}
+.choice.wrong{border-color:#ff4444;background:#2a0a0a;color:#ff4444}
+.choice.disabled{pointer-events:none;opacity:0.4}
+.choice.reveal{border-color:#00ff88;opacity:1!important}
+
+.feedback{margin-top:12px;padding:12px;border-radius:8px;font-size:13px;line-height:1.5;display:none}
+.feedback.pass{background:#0a2a1a;border:1px solid #00ff88;color:#00ff88;display:block}
+.feedback.fail{background:#2a0a0a;border:1px solid #ff4444;color:#ff4444;display:block}
+
+.next-btn{display:none;margin-top:12px;width:100%;padding:10px;border:none;border-radius:8px;background:#ff9900;color:#000;font-size:14px;font-weight:600;cursor:pointer}
+.next-btn:hover{background:#ffad33}
+
+/* Progress */
+.progress-bar{display:flex;gap:4px;justify-content:center;margin:8px 0}
+.pip{width:20px;height:4px;border-radius:2px;background:#2a3a4a}
+.pip.done{background:#00ff88}
+.pip.fail{background:#ff4444}
+.pip.current{background:#ff9900}
+
+/* Score */
+#score-screen{display:none;text-align:center;padding:40px 20px}
+#score-screen h2{font-size:56px;color:#fff;margin:16px 0 8px}
+#score-screen .grade{font-size:22px;font-weight:700;margin:8px 0 24px}
+#score-screen p{color:#888;font-size:16px;margin-bottom:20px}
+.restart-btn{padding:10px 28px;border:none;border-radius:8px;background:#ff9900;color:#000;font-size:14px;font-weight:600;cursor:pointer}
+.restart-btn:hover{background:#ffad33}
+.player-name{color:#ff9900;font-size:14px;text-align:center;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- NAME SCREEN -->
+<div id="name-screen">
+<div class="name-box">
+<h1>Packet Journey</h1>
+<p>Follow a packet through an AWS VPC.<br>Answer correctly or get dropped!</p>
+<input type="text" id="name-input" placeholder="Enter your name" autocomplete="off">
+<button onclick="startGame()">Start Journey</button>
+</div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" style="display:none">
+<div class="player-name" id="player-name"></div>
+<h1>Packet Journey</h1>
+<div class="progress-bar" id="progress"></div>
+
+<!-- DIAGRAM -->
+<div class="diagram-area" id="diagram">
+<div class="packet" id="packet"></div>
+</div>
+
+<!-- QUESTION -->
+<div class="question-area">
+<div class="step-label" id="step-label"></div>
+<div class="question-text" id="question-text"></div>
+<div class="info-box" id="info-box" style="display:none"></div>
+<div class="choices" id="choices"></div>
+<div class="feedback" id="feedback"></div>
+<button class="next-btn" id="next-btn" onclick="nextStep()">Continue</button>
+</div>
+</div>
+
+<!-- SCORE -->
+<div id="score-screen">
+<h1>Journey Complete</h1>
+<div class="player-name" id="score-name"></div>
+<h2 id="final-score"></h2>
+<div class="grade" id="final-grade"></div>
+<p id="final-msg"></p>
+<button class="restart-btn" onclick="location.reload()">Try Again</button>
+</div>
+
+</div>
+
+<script>
+const nodes = [
+  {id:'user',label:'User',icon:'U',color:'icon-gray',x:2},
+  {id:'igw',label:'Internet\nGateway',icon:'IGW',color:'icon-orange',x:12},
+  {id:'vpc',label:'VPC',icon:'VPC',color:'icon-orange',x:22},
+  {id:'rt',label:'Route\nTable',icon:'RT',color:'icon-orange',x:32},
+  {id:'nacl',label:'NACL',icon:'ACL',color:'icon-red',x:42},
+  {id:'sg',label:'Security\nGroup',icon:'SG',color:'icon-red',x:52},
+  {id:'ec2',label:'EC2',icon:'EC2',color:'icon-blue',x:62},
+  {id:'nat',label:'NAT\nGateway',icon:'NAT',color:'icon-orange',x:72},
+  {id:'priv',label:'Private\nSubnet',icon:'PRV',color:'icon-purple',x:82},
+  {id:'done',label:'Complete',icon:'OK',color:'icon-green',x:92},
+];
+
+const steps = [
+  {
+    nodeIdx:1,
+    text:"You're a packet leaving the user's browser, heading to <code>10.0.1.50</code> inside AWS. What's the first AWS component you hit?",
+    info:"User Browser\n     |\n     v\n  [ ??? ]\n     |\n     v\n   VPC",
+    choices:["Security Group","Internet Gateway","NAT Gateway","Route Table"],
+    answer:1,
+    pass:"The Internet Gateway (IGW) is the entry point to the VPC from the public internet. It's the front door of your network.",
+    fail:"The Internet Gateway is the first thing a packet hits when entering a VPC from the internet."
+  },
+  {
+    nodeIdx:2,
+    text:"You passed through the IGW! The VPC has CIDR <code>10.0.0.0/16</code>. How many IP addresses does this give?",
+    info:"VPC: 10.0.0.0/16\n/16 = 16 bits for network\n     16 bits for hosts\n     2^16 = ???",
+    choices:["256 IPs","512 IPs","65,536 IPs","16 IPs"],
+    answer:2,
+    pass:"A /16 CIDR block gives 65,536 IP addresses (2^16). That's a big network!",
+    fail:"/16 means 16 bits for hosts. 2^16 = 65,536 IPs."
+  },
+  {
+    nodeIdx:3,
+    text:"The VPC has two subnets. Your destination <code>10.0.1.50</code> is in which one?",
+    info:"Public Subnet:  10.0.1.0/24  (has IGW route)\nPrivate Subnet: 10.0.2.0/24  (no internet)",
+    choices:["Private Subnet (10.0.2.0/24)","Public Subnet (10.0.1.0/24)","Both subnets","Outside the VPC"],
+    answer:1,
+    pass:"10.0.1.50 falls within 10.0.1.0/24 - the public subnet. Web servers need public subnets to receive internet traffic.",
+    fail:"Check the CIDR ranges! 10.0.1.50 is within 10.0.1.0/24 - the public subnet."
+  },
+  {
+    nodeIdx:3,
+    text:"The Route Table directs traffic. What entry routes internet traffic to the public subnet?",
+    info:"Route Table (Public Subnet)\n+------------------+----------+\n| Destination      | Target   |\n+------------------+----------+\n| 10.0.0.0/16      | local    |\n| ???              | ???      |\n+------------------+----------+",
+    choices:["0.0.0.0/0 -> NAT Gateway","0.0.0.0/0 -> Internet Gateway","10.0.1.0/24 -> Internet Gateway","0.0.0.0/0 -> local"],
+    answer:1,
+    pass:"0.0.0.0/0 -> Internet Gateway. This is what makes a subnet 'public' - it has a route to the IGW!",
+    fail:"A public subnet needs 0.0.0.0/0 -> Internet Gateway. NAT Gateway is for private subnets."
+  },
+  {
+    nodeIdx:4,
+    text:"You're in the public subnet! Before reaching EC2, something checks your packet at the <strong>subnet level</strong>. What is it?",
+    info:"Public Subnet\n     |\n  [ ??? ]  <-- subnet-level firewall\n     |\n     v\n  EC2 Instance",
+    choices:["Security Group","Route Table","Network ACL (NACL)","Internet Gateway"],
+    answer:2,
+    pass:"The Network ACL (NACL) is a firewall at the subnet level. It's stateless - checks both inbound AND outbound separately.",
+    fail:"At the subnet level, it's the NACL. Security Groups are at the instance level - that comes next!"
+  },
+  {
+    nodeIdx:5,
+    text:"NACL allowed you through! Now the <strong>Security Group</strong> checks you. You're on port 80. Do you get in?",
+    info:"Security Group Inbound Rules:\n+------+----------+-------------+\n| Port | Protocol | Source      |\n+------+----------+-------------+\n| 80   | TCP      | 0.0.0.0/0   |\n| 22   | TCP      | 10.0.0.0/16 |\n+------+----------+-------------+\nYou: Port 80, from the internet",
+    choices:["No - 0.0.0.0/0 blocks everyone","Yes - Port 80 is allowed from anywhere","No - must be from 10.0.0.0/16","Yes - because Port 22 is open"],
+    answer:1,
+    pass:"Port 80 is allowed from 0.0.0.0/0 (anywhere). You're in! Security Groups are your instance-level firewall.",
+    fail:"0.0.0.0/0 means anywhere. Port 80 from anywhere = allowed!"
+  },
+  {
+    nodeIdx:6,
+    text:"You reached EC2! It sends a response back. Security Groups are <strong>stateful</strong>. What does that mean for the response?",
+    info:"EC2 sends response\n     |\n  Security Group (stateful)\n     |\n     v\n  Back to user",
+    choices:["Outbound is always blocked","Need a manual outbound rule","Return traffic is automatically allowed","Stateful means it saves passwords"],
+    answer:2,
+    pass:"Stateful = if inbound is allowed, return traffic is automatically allowed. No separate outbound rule needed!",
+    fail:"Stateful means return traffic is auto-allowed. That's the key feature of Security Groups!"
+  },
+  {
+    nodeIdx:4,
+    text:"The response hits the NACL on the way out. NACLs are <strong>stateless</strong>. What does that mean?",
+    info:"EC2 response\n     |\n  NACL (stateless)\n     |\n     v\n  Internet Gateway",
+    choices:["Return traffic is auto-allowed","Outbound rules must explicitly allow it","NACLs don't check outbound","Stateless means no rules"],
+    answer:1,
+    pass:"Stateless = inbound and outbound checked independently. You need explicit rules for BOTH directions!",
+    fail:"Stateless means both directions are checked separately. Unlike stateful Security Groups!"
+  },
+  {
+    nodeIdx:7,
+    text:"Your friend's EC2 is in the <strong>private subnet</strong>. It needs internet access for updates. No IGW route. What does it need?",
+    info:"Private Subnet (10.0.2.0/24)\n     |\n  [ ??? ]\n     |\n  Internet Gateway -> Internet",
+    choices:["Add IGW route to private subnet","A NAT Gateway in the public subnet","A Security Group allowing all outbound","Nothing - private subnets have internet"],
+    answer:1,
+    pass:"NAT Gateway sits in the public subnet, lets private instances reach the internet (outbound only). Inbound still blocked!",
+    fail:"Private subnets use a NAT Gateway for outbound internet. Adding IGW would make it public!"
+  },
+  {
+    nodeIdx:9,
+    text:"Final question! Which statement is TRUE about Security Groups vs NACLs?",
+    info:"Security Group        NACL\n+-----------------+  +-----------------+\n| Instance level  |  | Subnet level    |\n| ???             |  | ???             |\n+-----------------+  +-----------------+",
+    choices:["SG: stateless, allow+deny. NACL: stateful, allow only","SG: stateful, allow only. NACL: stateless, allow+deny","Both stateful with allow+deny","Both stateless with allow only"],
+    answer:1,
+    pass:"SG = stateful + allow only. NACL = stateless + allow AND deny with rule numbers. Journey complete!",
+    fail:"SG: stateful, allow only. NACL: stateless, allow+deny. That's the key difference!"
+  }
+];
+
+let current=0, score=0, answered=false, playerName='';
+
+function startGame(){
+  const name=document.getElementById('name-input').value.trim();
+  if(!name){document.getElementById('name-input').style.borderColor='#ff4444';return}
+  playerName=name;
+  document.getElementById('name-screen').style.display='none';
+  document.getElementById('game-screen').style.display='block';
+  document.getElementById('player-name').textContent=playerName;
+  buildDiagram();
+  buildProgress();
+  showStep();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'){
+  if(document.getElementById('name-screen').style.display!=='none')startGame();
+}});
+
+function buildDiagram(){
+  const d=document.getElementById('diagram');
+  // Arrow line
+  const line=document.createElement('div');
+  line.className='arrow-line';
+  line.style.left='5%';line.style.width='90%';
+  d.appendChild(line);
+
+  nodes.forEach((n,i)=>{
+    const div=document.createElement('div');
+    div.className='node'+(i===0?' active':' locked');
+    div.id='node-'+i;
+    div.style.left=n.x+'%';div.style.top='20px';
+    div.innerHTML=`<div class="icon ${n.color}">${n.icon}</div><div class="label">${n.label.replace('\n','<br>')}</div>`;
+    d.appendChild(div);
+  });
+
+  // Position packet at first node
+  const pkt=document.getElementById('packet');
+  pkt.style.left=(nodes[0].x+1.5)+'%';
+  pkt.style.top='110px';
+}
+
+function buildProgress(){
+  const p=document.getElementById('progress');
+  p.innerHTML='';
+  steps.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='pip'+(i===0?' current':'');
+    d.id='pip-'+i;
+    p.appendChild(d);
+  });
+}
+
+function movePacket(nodeIdx){
+  const pkt=document.getElementById('packet');
+  const target=nodes[nodeIdx];
+  pkt.style.left=(target.x+1.5)+'%';
+
+  // Update node states
+  nodes.forEach((n,i)=>{
+    const el=document.getElementById('node-'+i);
+    if(i<nodeIdx)el.className='node done';
+    else if(i===nodeIdx)el.className='node active';
+    else el.className='node locked';
+  });
+}
+
+function showStep(){
+  answered=false;
+  const s=steps[current];
+  document.getElementById('step-label').textContent=`Step ${current+1} of ${steps.length}`;
+  document.getElementById('question-text').innerHTML=s.text;
+  if(s.info){document.getElementById('info-box').style.display='block';document.getElementById('info-box').textContent=s.info}
+  else{document.getElementById('info-box').style.display='none'}
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('next-btn').style.display='none';
+
+  const c=document.getElementById('choices');
+  c.innerHTML='';
+  s.choices.forEach((t,i)=>{
+    const div=document.createElement('div');
+    div.className='choice';
+    div.textContent=t;
+    div.onclick=()=>selectChoice(i);
+    c.appendChild(div);
+  });
+}
+
+function selectChoice(i){
+  if(answered)return;
+  answered=true;
+  const s=steps[current];
+  const choices=document.querySelectorAll('.choice');
+  const fb=document.getElementById('feedback');
+  const pip=document.getElementById('pip-'+current);
+  const pkt=document.getElementById('packet');
+
+  choices.forEach(c=>c.classList.add('disabled'));
+
+  if(i===s.answer){
+    choices[i].classList.add('correct');
+    fb.className='feedback pass';
+    fb.textContent=s.pass;
+    pip.className='pip done';
+    score++;
+    movePacket(s.nodeIdx);
+  }else{
+    choices[i].classList.add('wrong');
+    choices[s.answer].classList.add('reveal');
+    fb.className='feedback fail';
+    fb.textContent=s.fail;
+    pip.className='pip fail';
+    pkt.classList.add('dropped');
+    setTimeout(()=>{pkt.classList.remove('dropped');movePacket(s.nodeIdx)},600);
+  }
+
+  document.getElementById('next-btn').style.display='block';
+  document.getElementById('next-btn').textContent=current<steps.length-1?'Continue Journey':'See Results';
+}
+
+function nextStep(){
+  current++;
+  if(current>=steps.length){showScore();return}
+  document.getElementById('pip-'+current).className='pip current';
+  showStep();
+}
+
+function showScore(){
+  document.getElementById('game-screen').style.display='none';
+  const ss=document.getElementById('score-screen');
+  ss.style.display='block';
+  document.getElementById('score-name').textContent=playerName;
+  document.getElementById('final-score').textContent=score+' / '+steps.length;
+
+  let grade,color;
+  if(score>=9){grade='Network Engineer!';color='#00ff88'}
+  else if(score>=7){grade='Almost there!';color='#8bc34a'}
+  else if(score>=5){grade='Keep studying!';color='#ff9900'}
+  else{grade='Packet Dropped!';color='#ff4444'}
+
+  document.getElementById('final-grade').textContent=grade;
+  document.getElementById('final-grade').style.color=color;
+  document.getElementById('final-msg').textContent=playerName+' got '+score+' out of '+steps.length+' correct.';
+}
+</script>
+</body>
+</html>

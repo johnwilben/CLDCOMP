@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPC Design Challenge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1923;color:#e0e0e0;min-height:100vh}
+.app{max-width:800px;margin:0 auto;padding:20px}
+h1{font-size:24px;color:#fff;text-align:center;margin:12px 0 4px}
+.subtitle{color:#888;text-align:center;font-size:13px;margin-bottom:20px}
+
+#name-screen{display:flex;justify-content:center;align-items:center;min-height:90vh}
+.name-box{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:40px;max-width:420px;width:90%;text-align:center}
+.name-box h1{font-size:26px;margin-bottom:6px}
+.name-box p{color:#888;margin-bottom:20px;font-size:14px;line-height:1.5}
+.name-box input{width:100%;padding:12px;border:1px solid #2a3a4a;border-radius:8px;background:#0f1923;color:#fff;font-size:16px;margin-bottom:12px;outline:none;text-align:center}
+.name-box input:focus{border-color:#ff9900}
+.name-box button{width:100%;padding:12px;border:none;border-radius:8px;background:#ff9900;color:#000;font-size:16px;font-weight:600;cursor:pointer}
+
+#quiz-screen{display:none}
+.scenario{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:20px;margin-bottom:16px}
+.scenario h2{font-size:18px;color:#ff9900;margin-bottom:8px}
+.scenario p{font-size:14px;color:#ccc;line-height:1.6}
+.scenario ul{margin:8px 0 0 20px;color:#ccc;font-size:14px}
+.scenario li{margin:4px 0}
+
+.section{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:20px;margin-bottom:12px}
+.section h3{font-size:16px;color:#fff;margin-bottom:4px}
+.section .explain{font-size:12px;color:#888;margin-bottom:12px;line-height:1.4}
+.q{margin-bottom:14px}
+.q label{display:block;font-size:14px;color:#ccc;margin-bottom:6px}
+.q select{width:100%;padding:10px;border:1px solid #2a3a4a;border-radius:8px;background:#0f1923;color:#fff;font-size:14px;outline:none}
+.q select:focus{border-color:#ff9900}
+.q textarea{width:100%;padding:10px;border:1px solid #2a3a4a;border-radius:8px;background:#0f1923;color:#fff;font-size:14px;outline:none;resize:vertical;min-height:80px;font-family:inherit}
+.q textarea:focus{border-color:#ff9900}
+
+.submit-btn{width:100%;padding:12px;border:none;border-radius:8px;background:#ff9900;color:#000;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px}
+.submit-btn:hover{background:#ffad33}
+.submit-btn:disabled{background:#555;cursor:not-allowed}
+
+#result-screen{display:none}
+.result-box{background:#1a2332;border:1px solid #2a3a4a;border-radius:12px;padding:24px;margin-bottom:12px}
+.result-box h2{text-align:center;font-size:40px;color:#fff;margin-bottom:4px}
+.result-box .grade{text-align:center;font-size:20px;font-weight:700;margin-bottom:16px}
+.result-item{padding:10px 0;border-bottom:1px solid #2a3a4a;font-size:14px}
+.result-item:last-child{border:none}
+.result-item .label{color:#888}
+.result-item .answer{color:#fff;font-weight:600}
+.result-item .correct{color:#00ff88}
+.result-item .wrong{color:#ff4444}
+.result-item .explanation{color:#aaa;font-size:12px;margin-top:4px;line-height:1.4}
+.narrative-box{background:#0f1923;border:1px solid #2a3a4a;border-radius:8px;padding:12px;margin-top:12px;font-size:13px;color:#ccc;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div id="name-screen">
+<div class="name-box">
+<h1>VPC Design Challenge</h1>
+<p>A company needs your help designing their AWS network. Read the scenario, make design decisions, and explain your choices.</p>
+<input type="text" id="name-input" placeholder="Enter your full name" autocomplete="off">
+<input type="email" id="email-input" placeholder="Enter your email" autocomplete="off">
+<button onclick="startQuiz()">Start Challenge</button>
+</div>
+</div>
+
+<div id="quiz-screen">
+<h1>VPC Design Challenge</h1>
+<div class="subtitle" id="player-info"></div>
+
+<div class="scenario">
+<h2>Scenario: TindahanPH Online Store</h2>
+<p>TindahanPH is launching an online store. They need:</p>
+<ul>
+<li>A <strong>web server</strong> that customers can access from the internet</li>
+<li>A <strong>MySQL database</strong> that stores products, orders, and customer data</li>
+<li>The database must <strong>NOT</strong> be accessible from the internet</li>
+<li>The database server needs to <strong>download security updates</strong> from the internet</li>
+<li>Only the IT admin should be able to SSH into the web server</li>
+</ul>
+<p style="margin-top:8px;color:#ff9900"><strong>Design their AWS network below.</strong></p>
+</div>
+
+<!-- Section 1: VPC -->
+<div class="section">
+<h3>1. VPC Design (10 pts)</h3>
+<div class="explain">The VPC is your private network. Choose the right size for TindahanPH.</div>
+<div class="q">
+<label>What CIDR block should the VPC use?</label>
+<select id="q1">
+<option value="">-- Select --</option>
+<option value="a">10.0.0.0/28 (16 IPs)</option>
+<option value="b">10.0.0.0/24 (256 IPs)</option>
+<option value="c">10.0.0.0/16 (65,536 IPs)</option>
+<option value="d">10.0.0.0/8 (16 million IPs)</option>
+</select>
+</div>
+<div class="q">
+<label>How many subnets does TindahanPH need at minimum?</label>
+<select id="q2">
+<option value="">-- Select --</option>
+<option value="a">1 — put everything together</option>
+<option value="b">2 — one public, one private</option>
+<option value="c">4 — one per service</option>
+<option value="d">0 — subnets are not needed</option>
+</select>
+</div>
+</div>
+
+<!-- Section 2: Subnets -->
+<div class="section">
+<h3>2. Subnet Placement (15 pts)</h3>
+<div class="explain">Decide where each resource goes. Public subnets can be reached from the internet. Private subnets cannot.</div>
+<div class="q">
+<label>Where should the web server (EC2) go?</label>
+<select id="q3">
+<option value="">-- Select --</option>
+<option value="a">Public subnet</option>
+<option value="b">Private subnet</option>
+<option value="c">No subnet needed</option>
+</select>
+</div>
+<div class="q">
+<label>Where should the database (RDS) go?</label>
+<select id="q4">
+<option value="">-- Select --</option>
+<option value="a">Public subnet</option>
+<option value="b">Private subnet</option>
+<option value="c">Same subnet as EC2</option>
+</select>
+</div>
+<div class="q">
+<label>The database needs to download updates. What component enables this from a private subnet?</label>
+<select id="q5">
+<option value="">-- Select --</option>
+<option value="a">Internet Gateway</option>
+<option value="b">NAT Gateway</option>
+<option value="c">Security Group</option>
+<option value="d">Route Table</option>
+</select>
+</div>
+</div>
+
+<!-- Section 3: Routing -->
+<div class="section">
+<h3>3. Route Tables (15 pts)</h3>
+<div class="explain">Route tables determine where traffic goes. Each subnet needs the right routes.</div>
+<div class="q">
+<label>Public subnet: Where should 0.0.0.0/0 (internet traffic) route to?</label>
+<select id="q6">
+<option value="">-- Select --</option>
+<option value="a">NAT Gateway</option>
+<option value="b">Internet Gateway</option>
+<option value="c">Local</option>
+<option value="d">Security Group</option>
+</select>
+</div>
+<div class="q">
+<label>Private subnet: Where should 0.0.0.0/0 route to?</label>
+<select id="q7">
+<option value="">-- Select --</option>
+<option value="a">Internet Gateway</option>
+<option value="b">NAT Gateway</option>
+<option value="c">Local</option>
+<option value="d">Nowhere — no route needed</option>
+</select>
+</div>
+<div class="q">
+<label>What does the "local" route (10.0.0.0/16 -> local) do?</label>
+<select id="q8">
+<option value="">-- Select --</option>
+<option value="a">Sends traffic to the internet</option>
+<option value="b">Keeps traffic within the VPC</option>
+<option value="c">Blocks all traffic</option>
+<option value="d">Routes to NAT Gateway</option>
+</select>
+</div>
+</div>
+
+<!-- Section 4: Security -->
+<div class="section">
+<h3>4. Security Groups (20 pts)</h3>
+<div class="explain">Security Groups are instance-level firewalls. Only allow what's needed.</div>
+<div class="q">
+<label>EC2 Security Group: What source should SSH (port 22) allow?</label>
+<select id="q9">
+<option value="">-- Select --</option>
+<option value="a">0.0.0.0/0 (anywhere)</option>
+<option value="b">My IP only</option>
+<option value="c">The RDS Security Group</option>
+<option value="d">10.0.0.0/16 (entire VPC)</option>
+</select>
+</div>
+<div class="q">
+<label>EC2 Security Group: What source should HTTP (port 80) allow?</label>
+<select id="q10">
+<option value="">-- Select --</option>
+<option value="a">My IP only</option>
+<option value="b">0.0.0.0/0 (anywhere — customers need access)</option>
+<option value="c">The RDS Security Group</option>
+<option value="d">No HTTP needed</option>
+</select>
+</div>
+<div class="q">
+<label>RDS Security Group: What source should MySQL (port 3306) allow?</label>
+<select id="q11">
+<option value="">-- Select --</option>
+<option value="a">0.0.0.0/0 (anywhere)</option>
+<option value="b">My IP only</option>
+<option value="c">EC2 Security Group only</option>
+<option value="d">10.0.0.0/16 (entire VPC)</option>
+</select>
+</div>
+<div class="q">
+<label>Security Groups are stateful. What does this mean?</label>
+<select id="q12">
+<option value="">-- Select --</option>
+<option value="a">You need outbound rules for every inbound rule</option>
+<option value="b">Return traffic is automatically allowed</option>
+<option value="c">Rules are evaluated by number</option>
+<option value="d">They have allow and deny rules</option>
+</select>
+</div>
+</div>
+
+<!-- Section 5: NACL -->
+<div class="section">
+<h3>5. Network ACLs (10 pts)</h3>
+<div class="explain">NACLs are subnet-level firewalls. They add an extra layer of security.</div>
+<div class="q">
+<label>How are NACLs different from Security Groups?</label>
+<select id="q13">
+<option value="">-- Select --</option>
+<option value="a">NACLs are stateful, SGs are stateless</option>
+<option value="b">NACLs are stateless with allow+deny rules, SGs are stateful with allow only</option>
+<option value="c">They are exactly the same</option>
+<option value="d">NACLs are for instances, SGs are for subnets</option>
+</select>
+</div>
+<div class="q">
+<label>If a NACL allows inbound port 80, do you need an outbound rule for the response?</label>
+<select id="q14">
+<option value="">-- Select --</option>
+<option value="a">No — return traffic is automatic</option>
+<option value="b">Yes — NACLs are stateless, both directions need rules</option>
+<option value="c">Only if the Security Group blocks it</option>
+</select>
+</div>
+</div>
+
+<!-- Section 6: Narrative -->
+<div class="section">
+<h3>6. Explain Your Design (30 pts)</h3>
+<div class="explain">In your own words, explain the architecture you designed. Why did you make these choices?</div>
+<div class="q">
+<label>Explain why you placed the web server and database in different subnets. (5+ sentences)</label>
+<textarea id="q15" placeholder="Write your explanation here..."></textarea>
+</div>
+<div class="q">
+<label>A junior engineer suggests putting the RDS database in the public subnet with SSH access from 0.0.0.0/0 "for easier management." Explain why this is a bad idea and what they should do instead. (5+ sentences)</label>
+<textarea id="q16" placeholder="Write your explanation here..."></textarea>
+</div>
+</div>
+
+<button class="submit-btn" onclick="submitQuiz()">Submit Design</button>
+</div>
+
+<!-- RESULTS -->
+<div id="result-screen">
+<h1>Design Review</h1>
+<div class="subtitle" id="result-info"></div>
+<div class="result-box" id="result-box"></div>
+</div>
+
+</div>
+
+<script>
+const SHEET_API="https://script.google.com/macros/s/AKfycbwIKVPUQuxk268JDI8fEby9EORhx7rep_yDHiQGcloxGLdSHaVzKMLgX7qzGIi_rr1c/exec";
+
+const answers={
+  q1:{correct:'c',explain:'A /16 gives 65,536 IPs — enough room for growth. /24 is too small for a VPC (only 256). /8 is way too large.'},
+  q2:{correct:'b',explain:'Two subnets minimum: public (for web server) and private (for database). This separates internet-facing resources from internal ones.'},
+  q3:{correct:'a',explain:'The web server needs to be in a public subnet so customers can reach it from the internet via the Internet Gateway.'},
+  q4:{correct:'b',explain:'The database must be in a private subnet — it should never be directly accessible from the internet. Only the web server connects to it.'},
+  q5:{correct:'b',explain:'A NAT Gateway (in the public subnet) lets private subnet instances access the internet outbound for updates, while blocking inbound connections.'},
+  q6:{correct:'b',explain:'Public subnet routes 0.0.0.0/0 to the Internet Gateway. This is what makes it "public."'},
+  q7:{correct:'b',explain:'Private subnet routes 0.0.0.0/0 to the NAT Gateway for outbound internet access (updates, patches) without exposing instances to inbound traffic.'},
+  q8:{correct:'b',explain:'The "local" route keeps traffic within the VPC. When EC2 talks to RDS (both in 10.0.0.0/16), traffic stays internal.'},
+  q9:{correct:'b',explain:'SSH should only be allowed from your IP. Opening SSH to 0.0.0.0/0 lets anyone on the internet try to brute-force your server.'},
+  q10:{correct:'b',explain:'HTTP (port 80) should be open to 0.0.0.0/0 because customers from anywhere need to access the website.'},
+  q11:{correct:'c',explain:'RDS should only accept connections from the EC2 Security Group. Never open database ports to 0.0.0.0/0!'},
+  q12:{correct:'b',explain:'Stateful means if inbound traffic is allowed, the return (outbound) response is automatically allowed without needing a separate rule.'},
+  q13:{correct:'b',explain:'NACLs are stateless (need rules for both directions) and support allow+deny rules. SGs are stateful (return traffic auto-allowed) and only have allow rules.'},
+  q14:{correct:'b',explain:'NACLs are stateless — inbound and outbound are checked independently. You must explicitly allow outbound traffic for responses.'},
+};
+
+let playerName='',playerEmail='';
+
+function startQuiz(){
+  playerName=document.getElementById('name-input').value.trim();
+  playerEmail=document.getElementById('email-input').value.trim();
+  if(!playerName||!playerEmail){return}
+  document.getElementById('name-screen').style.display='none';
+  document.getElementById('quiz-screen').style.display='block';
+  document.getElementById('player-info').textContent=playerName+' | '+playerEmail;
+}
+
+function submitQuiz(){
+  let score=0,total=70,results=[];
+  const pts={q1:5,q2:5,q3:5,q4:5,q5:5,q6:5,q7:5,q8:5,q9:5,q10:5,q11:5,q12:5,q13:5,q14:5};
+
+  for(const[id,info]of Object.entries(answers)){
+    const val=document.getElementById(id).value;
+    const p=pts[id];
+    const correct=val===info.correct;
+    if(correct)score+=p;
+    results.push({id,val,correct,pts:p,explain:info.explain});
+  }
+
+  const n1=document.getElementById('q15').value.trim();
+  const n2=document.getElementById('q16').value.trim();
+  const n1Score=n1.split(/\s+/).length>=30?15:n1.split(/\s+/).length>=15?10:n1.length>0?5:0;
+  const n2Score=n2.split(/\s+/).length>=30?15:n2.split(/\s+/).length>=15?10:n2.length>0?5:0;
+  score+=n1Score+n2Score;
+
+  // Submit to Google Sheet
+  try{
+    fetch(SHEET_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({sheet:'VPC Design',name:playerName,email:playerEmail,score:score,total:total+30,narrative1:n1,narrative2:n2,timestamp:new Date().toISOString()})
+    });
+  }catch(e){}
+
+  showResults(score,total+30,results,n1,n2,n1Score,n2Score);
+}
+
+function showResults(score,total,results,n1,n2,n1s,n2s){
+  document.getElementById('quiz-screen').style.display='none';
+  document.getElementById('result-screen').style.display='block';
+  document.getElementById('result-info').textContent=playerName;
+
+  let grade,color;
+  const pct=Math.round(score/total*100);
+  if(pct>=90){grade='Excellent!';color='#00ff88'}
+  else if(pct>=80){grade='Very Good!';color='#8bc34a'}
+  else if(pct>=70){grade='Good!';color='#ff9900'}
+  else if(pct>=60){grade='Needs Improvement';color='#ff9900'}
+  else{grade='Study More!';color='#ff4444'}
+
+  let html=`<h2>${score} / ${total}</h2><div class="grade" style="color:${color}">${grade}</div>`;
+
+  html+='<h3 style="color:#ff9900;margin:16px 0 8px">Design Decisions</h3>';
+  results.forEach(r=>{
+    const label=document.querySelector(`label[for="${r.id}"]`)||document.getElementById(r.id).previousElementSibling;
+    const qText=label?label.textContent:'';
+    const selected=document.getElementById(r.id).options[document.getElementById(r.id).selectedIndex].text;
+    html+=`<div class="result-item">
+      <div class="label">${qText}</div>
+      <div class="answer ${r.correct?'correct':'wrong'}">${r.correct?'CORRECT':'WRONG'}: ${selected}</div>
+      <div class="explanation">${r.explain}</div>
+    </div>`;
+  });
+
+  html+='<h3 style="color:#ff9900;margin:16px 0 8px">Narrative Responses</h3>';
+  html+=`<div class="result-item"><div class="label">Subnet separation explanation (${n1s}/15 pts)</div><div class="narrative-box">${n1||'(no answer)'}</div></div>`;
+  html+=`<div class="result-item"><div class="label">Security critique (${n2s}/15 pts)</div><div class="narrative-box">${n2||'(no answer)'}</div></div>`;
+
+  document.getElementById('result-box').innerHTML=html;
+}
+</script>
+</body>
+</html>
