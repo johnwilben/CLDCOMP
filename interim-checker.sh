@@ -1,4 +1,15 @@
 #!/bin/bash
+export AWS_DEFAULT_REGION=ap-southeast-1
+
+# Credential check
+aws sts get-caller-identity > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "ERROR: AWS credentials not working."
+  echo "If using CloudShell, try closing and reopening it."
+  echo "If using local CLI, run: aws configure"
+  exit 1
+fi
+
 echo "=============================================="
 echo "  Interim Exam Checker - Serverless Dashboard"
 echo "=============================================="
@@ -24,10 +35,13 @@ echo ""
 echo "-- Section 1: S3 Bucket Setup (15 pts) --"
 
 # Check bucket exists
-BUCKET_EXISTS=$(aws s3api head-bucket --bucket "$BUCKET" 2>&1)
+BUCKET_EXISTS=$(aws s3api head-bucket --bucket "$BUCKET" --region "$REGION" 2>&1)
 if [ $? -eq 0 ]; then
   echo "  [PASS] Bucket exists: $BUCKET (5/5)"
   SCORE=$((SCORE + 5))
+elif echo "$BUCKET_EXISTS" | grep -qi "credentials\|error retrieving\|500"; then
+  echo "  [ERROR] AWS credentials issue. Restart CloudShell and try again."
+  exit 1
 else
   echo "  [FAIL] Bucket not found: $BUCKET (0/5)"
 fi
