@@ -24,7 +24,6 @@ def lambda_handler(event, context):
     records = []
     
     for row in reader:
-        # BUG #2: Wrong column name - CSV has 'amount' but code uses 'total'
         total_sales += float(row['total'])
         total_items += int(row['quantity'])
         records.append({
@@ -41,7 +40,6 @@ def lambda_handler(event, context):
         'records': records
     }
     
-    # BUG #3: Wrong output filename - website expects 'results.json' but code writes 'result.json'
     output_key = 'data/result.json'
     
     s3.put_object(
