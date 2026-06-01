@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Tracker</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1923;color:#e0e0e0;min-height:100vh;padding:24px}
+.container{max-width:800px;margin:0 auto}
+h1{font-size:28px;color:#fff;margin-bottom:4px}
+.student-name{color:#ff9900;font-size:16px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:#1a2332;border:1px solid #2a3a4a;border-radius:8px;padding:16px;text-align:center}
+.stat-card .value{font-size:32px;font-weight:700;color:#ff9900}
+.stat-card .label{font-size:12px;color:#888;margin-top:4px}
+table{width:100%;border-collapse:collapse;background:#1a2332;border-radius:8px;overflow:hidden}
+th{background:#2a3a4a;padding:10px 12px;text-align:left;font-size:13px;color:#ff9900}
+td{padding:10px 12px;border-bottom:1px solid #2a3a4a;font-size:14px}
+.low-stock{color:#ff4444;font-weight:700}
+.ok-stock{color:#4caf50}
+.loading{text-align:center;color:#888;padding:40px;font-size:16px}
+.error{text-align:center;color:#ff4444;padding:40px;font-size:16px}
+.footer{margin-top:24px;text-align:center;color:#555;font-size:12px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Inventory Tracker</h1>
+<p class="student-name"><!-- STUDENT: Replace with your full name -->YOUR NAME HERE</p>
+
+<div class="stats">
+<div class="stat-card"><div class="value" id="total-items">-</div><div class="label">Total Stock</div></div>
+<div class="stat-card"><div class="value" id="low-stock">-</div><div class="label">Low Stock Items</div></div>
+<div class="stat-card"><div class="value" id="total-value">-</div><div class="label">Inventory Value (PHP)</div></div>
+</div>
+
+<table>
+<thead><tr><th>Item</th><th>Stock</th><th>Price (PHP)</th><th>Status</th></tr></thead>
+<tbody id="table-body"><tr><td colspan="4" class="loading">Loading inventory data...</td></tr></tbody>
+</table>
+
+<div class="footer">Powered by AWS S3 + Lambda | Serverless Inventory System</div>
+</div>
+
+<script>
+async function loadData(){
+  try{
+    const res=await fetch('data/inventory.json');
+    if(!res.ok)throw new Error('inventory.json not found');
+    const data=await res.json();
+
+    document.getElementById('total-items').textContent=data.total_stock.toLocaleString();
+    document.getElementById('low-stock').textContent=data.low_stock_count;
+    document.getElementById('total-value').textContent='P '+data.total_value.toLocaleString();
+
+    const tbody=document.getElementById('table-body');
+    tbody.innerHTML='';
+    data.items.forEach(r=>{
+      const statusClass=r.stock<=10?'low-stock':'ok-stock';
+      const statusText=r.stock<=10?'LOW':'OK';
+      tbody.innerHTML+=`<tr><td>${r.item}</td><td>${r.stock}</td><td>P ${r.price.toLocaleString()}</td><td class="${statusClass}">${statusText}</td></tr>`;
+    });
+  }catch(e){
+    document.getElementById('table-body').innerHTML=`<tr><td colspan="4" class="error">Inventory not available. Make sure your Lambda function has processed the CSV file correctly.<br><br>Error: ${e.message}</td></tr>`;
+  }
+}
+loadData();
+</script>
+</body>
+</html>
